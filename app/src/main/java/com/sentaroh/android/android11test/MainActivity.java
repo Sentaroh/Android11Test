@@ -1,5 +1,7 @@
 package com.sentaroh.android.android11test;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.Manifest;
@@ -35,14 +37,27 @@ public class MainActivity extends AppCompatActivity {
         File[] fl=getExternalFilesDirs(null);
     }
 
+    ActivityResultLauncher<String> requestPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+//                    performTest();
+                } else {
+                    Toast.makeText(MainActivity.this, "Media storage permission not granted", Toast.LENGTH_LONG).show();
+                    finish();
+                }
+            });
+
+
+    private boolean mRequestIssued=false;
     @Override
     public void onResume() {
         super.onResume();
 
-        if (isLegacyStorageAccessGranted()) {
+        if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
             performTest();
         } else {
-            requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 10);
+            if (!mRequestIssued) requestPermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+            mRequestIssued=true;
         }
     }
 
@@ -69,25 +84,6 @@ public class MainActivity extends AppCompatActivity {
         th.start();
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        if (10 == requestCode) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                performTest();
-            } else {
-                Toast.makeText(MainActivity.this, "Media storage permission not granted", Toast.LENGTH_LONG).show();
-                finish();
-            }
-        }
-    }
-
-
-    private boolean isLegacyStorageAccessGranted() {
-        if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) return false;
-        return true;
-    }
-
-
     private Handler mUiHandler=new Handler();
     private void putMessage(final String msg) {
         mUiHandler.post(new Runnable() {
@@ -99,6 +95,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void android11Test1(String mp) {
+        Thread.dumpStack();
         String fn="test.file";
         String fp=mp+"/"+fn;
         putMessage("Test1 Write to "+fp);
